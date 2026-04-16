@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>骨折检测</title>
+</head>
+<body>
+    <h2>🦴 骨折检测系统</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <button type="submit">上传</button>
+    </form>
+
+    {% if img_path %}
+        <h3>图片：</h3>
+        <img src="{{ img_path }}" width="300">
+    {% endif %}
+
+    {% if result %}
+        <h3>结果：{{ result }}</h3>
+    {% endif %}
+</body>
+</html>
