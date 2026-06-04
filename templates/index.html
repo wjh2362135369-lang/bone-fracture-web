@@ -1,615 +1,761 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>骨折检测系统</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #0a0e17;
-            --surface: #111827;
-            --surface2: #1a2235;
-            --border: #1e2d45;
-            --accent: #00d4ff;
-            --accent2: #0066ff;
-            --warn: #ff6b35;
-            --text: #e8edf5;
-            --text-muted: #5a6a82;
-            --text-dim: #8a9ab5;
-            --success: #00e5a0;
-            --grid: rgba(0, 212, 255, 0.03);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="page.title">Bone Fracture AI Detection System</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@300;400;500&family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#070b14; --surface:#0f1626; --surface2:#172033; --border:#1e2d45;
+  --accent:#00d4ff; --accent2:#0066ff; --warn:#ff6b35; --danger:#ff3b6b;
+  --text:#e8edf5; --text-muted:#5a6a82; --text-dim:#8a9ab5;
+  --success:#00e5a0; --grid:rgba(0,212,255,0.03);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono','Noto Sans SC','Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(ellipse,rgba(0,102,255,.15) 0%,transparent 70%);pointer-events:none;z-index:0}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+.container{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:28px 28px 80px}
 
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'DM Mono', 'Noto Sans SC', monospace;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+.logo-group{display:flex;align-items:center;gap:14px}
+.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--accent2),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(0,212,255,.35)}
+.logo-text{font-family:'DM Serif Display',serif;font-size:20px}
+.logo-sub{font-size:10px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.header-right{display:flex;gap:10px;align-items:center}
+.status-badge{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--success);letter-spacing:1.5px;text-transform:uppercase;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);padding:6px 14px;border-radius:20px}
+.status-dot{width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
 
-        /* Grid background */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image:
-                linear-gradient(var(--grid) 1px, transparent 1px),
-                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-            background-size: 40px 40px;
-            pointer-events: none;
-            z-index: 0;
-        }
+.dl-wrap{position:relative}
+.dl-btn{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:inherit;box-shadow:0 4px 18px rgba(0,102,255,.35)}
+.dl-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.dl-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:10px;min-width:200px;overflow:hidden;display:none;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.dl-menu.show{display:block}
+.dl-menu button{display:block;width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:12px 16px;font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:.5px}
+.dl-menu button:hover{background:var(--surface2);color:var(--accent)}
+.dl-menu button.current{background:rgba(0,212,255,.12);color:var(--accent);font-weight:700;border-left:3px solid var(--accent)}
 
-        /* Glow orbs */
-        body::after {
-            content: '';
-            position: fixed;
-            top: -200px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 400px;
-            background: radial-gradient(ellipse, rgba(0, 102, 255, 0.12) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }
+.hero{text-align:center;margin-bottom:30px;animation:fadeUp .6s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.hero-tag{display:inline-block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);padding:5px 16px;border-radius:20px;margin-bottom:14px}
+.hero h1{font-family:'DM Serif Display',serif;font-size:clamp(30px,5vw,52px);line-height:1.1;margin-bottom:10px;background:linear-gradient(135deg,#fff,#a0b4d0);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:13px;color:var(--text-dim);max-width:560px;margin:0 auto;line-height:1.7;font-family:'Noto Sans SC',sans-serif;font-weight:300}
 
-        .container {
-            position: relative;
-            z-index: 1;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 40px 24px 80px;
-        }
+/* Upload */
+.upload-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:24px;position:relative;overflow:hidden}
+.upload-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.4}
+.section-label{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:36px 24px;text-align:center;cursor:pointer;transition:all .3s ease;background:rgba(0,212,255,.02);position:relative}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--accent);background:rgba(0,212,255,.06)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:36px;margin-bottom:12px;display:block;opacity:.7}
+.drop-text{font-size:14px;color:var(--text-dim);margin-bottom:6px;font-family:'Noto Sans SC',sans-serif}
+.drop-sub{font-size:11px;color:var(--text-muted);letter-spacing:1px}
+.file-preview{display:none;align-items:center;gap:14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:14px}
+.file-preview.show{display:flex}
+.file-icon{width:34px;height:34px;background:rgba(0,212,255,.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.file-info{flex:1;overflow:hidden}
+.file-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-size{font-size:11px;color:var(--text-muted);margin-top:2px}
+.file-check{color:var(--success);font-size:18px}
+.submit-btn{width:100%;margin-top:18px;padding:14px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;border:none;border-radius:10px;font-family:'DM Mono',monospace;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .3s ease}
+.submit-btn:hover{box-shadow:0 8px 30px rgba(0,102,255,.4);transform:translateY(-1px)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
-        /* Header */
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 60px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border);
-        }
+/* Scan overlay */
+.scan-overlay{position:fixed;inset:0;background:rgba(7,11,20,.92);z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.scan-overlay.show{display:flex}
+.scan-box{width:280px;height:280px;border:1px solid var(--accent);border-radius:14px;position:relative;overflow:hidden;background:rgba(0,212,255,.04);box-shadow:0 0 60px rgba(0,212,255,.3) inset,0 0 80px rgba(0,212,255,.15)}
+.scan-box::before,.scan-box::after{content:'';position:absolute;width:30px;height:30px;border:2px solid var(--accent)}
+.scan-box::before{top:8px;left:8px;border-right:none;border-bottom:none}
+.scan-box::after{bottom:8px;right:8px;border-left:none;border-top:none}
+.scan-line{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);box-shadow:0 0 16px var(--accent);animation:scanmove 1.8s linear infinite}
+@keyframes scanmove{0%{top:0}100%{top:100%}}
+.scan-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.08) 1px,transparent 1px);background-size:20px 20px}
+.scan-text{margin-top:22px;font-size:13px;letter-spacing:4px;color:var(--accent);text-transform:uppercase}
+.scan-status{margin-top:6px;font-size:11px;color:var(--text-dim);letter-spacing:1px}
+.scan-bar{margin-top:14px;width:280px;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.scan-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent));animation:progress 2.4s ease forwards}
+@keyframes progress{0%{width:0}80%{width:88%}100%{width:96%}}
 
-        .logo-group {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
+/* PACS Result */
+.result-wrap{display:none;animation:fadeUp .5s ease both}
+.result-wrap.show{display:block}
+.pacs{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+@media(max-width:980px){.pacs{grid-template-columns:1fr}}
 
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--accent2), var(--accent));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-        }
+.viewer{padding:20px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:14px;background:#05080f}
+@media(max-width:980px){.viewer{border-right:none;border-bottom:1px solid var(--border)}}
+.viewer-head{display:flex;justify-content:space-between;align-items:center}
+.viewer-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)}
+.view-tabs{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px}
+.view-tab{padding:6px 12px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--text-dim);background:transparent;border:none;border-radius:6px;cursor:pointer;font-family:inherit;transition:all .2s}
+.view-tab.active{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff}
 
-        .logo-text {
-            font-family: 'DM Serif Display', serif;
-            font-size: 20px;
-            letter-spacing: 0.5px;
-            color: var(--text);
-        }
+.canvas-area{position:relative;width:100%;aspect-ratio:1/1;background:#000;border-radius:10px;overflow:hidden;border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+.canvas-area img{width:100%;height:100%;object-fit:contain;display:block;position:absolute;inset:0}
+.canvas-area .layer-heat,.canvas-area .layer-overlay{opacity:0}
+.canvas-area[data-view=heatmap] .layer-orig{opacity:0}
+.canvas-area[data-view=heatmap] .layer-heat{opacity:1}
+.canvas-area[data-view=overlay] .layer-overlay{opacity:1}
+.canvas-area[data-view=overlay] .layer-orig{opacity:0}
+.lesion-box{position:absolute;border:2px solid #ff3b6b;box-shadow:0 0 18px rgba(255,59,107,.7),0 0 0 9999px rgba(0,0,0,0) inset;background:rgba(255,59,107,.12);border-radius:4px;display:none;pointer-events:none}
+.lesion-box.show{display:block;animation:boxIn .5s ease both}
+.lesion-label{position:absolute;top:-22px;left:-2px;background:#ff3b6b;color:#fff;font-size:9px;letter-spacing:1.5px;padding:3px 7px;border-radius:4px;text-transform:uppercase;white-space:nowrap}
+@keyframes boxIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
 
-        .logo-sub {
-            font-size: 10px;
-            color: var(--text-muted);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.thumb{position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;background:#000;transition:all .2s}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb.active{border-color:var(--accent);box-shadow:0 0 16px rgba(0,212,255,.4)}
+.thumb-cap{position:absolute;bottom:0;left:0;right:0;padding:4px 6px;background:rgba(0,0,0,.7);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);text-align:center}
 
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 11px;
-            color: var(--success);
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            background: rgba(0, 229, 160, 0.08);
-            border: 1px solid rgba(0, 229, 160, 0.2);
-            padding: 6px 14px;
-            border-radius: 20px;
-        }
+/* Right panel */
+.report{padding:24px;display:flex;flex-direction:column;gap:18px}
+.report-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.report-head-label{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--text-muted)}
+.report-id{font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace}
 
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            background: var(--success);
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+.diag-result{font-family:'DM Serif Display',serif;font-size:26px;color:var(--accent);line-height:1.2;text-shadow:0 0 24px rgba(0,212,255,.35)}
+.diag-sub{font-size:11px;color:var(--text-dim);margin-top:6px;letter-spacing:1px;font-family:'Noto Sans SC',sans-serif}
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.8); }
-        }
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.metric-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.metric-val{font-size:22px;font-family:'DM Serif Display',serif;color:var(--text)}
+.metric-val.risk-Low{color:var(--success)}
+.metric-val.risk-Medium{color:var(--warn)}
+.metric-val.risk-High{color:var(--danger)}
 
-        /* Hero */
-        .hero {
-            text-align: center;
-            margin-bottom: 50px;
-            animation: fadeUp 0.6s ease both;
-        }
+.conf-bar{height:6px;background:#0a1020;border-radius:4px;margin-top:8px;overflow:hidden}
+.conf-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:4px;width:0;transition:width 1s ease}
 
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+.region-info{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.region-info .label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.region-info .text{font-size:13px;color:var(--text-dim);line-height:1.6;font-family:'Noto Sans SC',sans-serif}
+.approx-tag{display:inline-block;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--warn);background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.25);padding:3px 8px;border-radius:6px;margin-top:8px}
 
-        .hero-tag {
-            display: inline-block;
-            font-size: 10px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: var(--accent);
-            background: rgba(0, 212, 255, 0.08);
-            border: 1px solid rgba(0, 212, 255, 0.2);
-            padding: 5px 16px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-        }
+.meta-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.meta-row:last-child{border-bottom:none}
+.meta-key{color:var(--text-muted);letter-spacing:1px}
+.meta-val{color:var(--text-dim);font-family:'DM Mono',monospace}
 
-        .hero h1 {
-            font-family: 'DM Serif Display', serif;
-            font-size: clamp(36px, 6vw, 64px);
-            line-height: 1.1;
-            margin-bottom: 16px;
-            background: linear-gradient(135deg, #ffffff 0%, #a0b4d0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+.warn-badge{display:flex;align-items:flex-start;gap:8px;background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.22);color:var(--warn);font-size:11px;padding:10px 14px;border-radius:8px;line-height:1.55;font-family:'Noto Sans SC',sans-serif}
 
-        .hero p {
-            font-size: 14px;
-            color: var(--text-dim);
-            max-width: 480px;
-            margin: 0 auto;
-            line-height: 1.7;
-            font-family: 'Noto Sans SC', sans-serif;
-            font-weight: 300;
-        }
-
-        /* Upload area */
-        .upload-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 40px;
-            margin-bottom: 30px;
-            animation: fadeUp 0.6s 0.1s ease both;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .upload-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--accent), transparent);
-            opacity: 0.4;
-        }
-
-        .section-label {
-            font-size: 10px;
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-label::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        .drop-zone {
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 48px 24px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(0, 212, 255, 0.02);
-            position: relative;
-        }
-
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--accent);
-            background: rgba(0, 212, 255, 0.06);
-            transform: scale(1.005);
-        }
-
-        .drop-zone input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
-            width: 100%;
-            height: 100%;
-        }
-
-        .drop-icon {
-            font-size: 40px;
-            margin-bottom: 16px;
-            display: block;
-            opacity: 0.7;
-        }
-
-        .drop-text {
-            font-size: 14px;
-            color: var(--text-dim);
-            margin-bottom: 8px;
-            font-family: 'Noto Sans SC', sans-serif;
-        }
-
-        .drop-sub {
-            font-size: 11px;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        .file-preview {
-            display: none;
-            align-items: center;
-            gap: 14px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 14px 18px;
-            margin-top: 16px;
-        }
-
-        .file-preview.show { display: flex; }
-
-        .file-icon {
-            width: 36px;
-            height: 36px;
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .file-info { flex: 1; overflow: hidden; }
-        .file-name {
-            font-size: 13px;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .file-size {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 2px;
-        }
-
-        .file-check { color: var(--success); font-size: 18px; }
-
-        /* Submit button */
-        .submit-btn {
-            width: 100%;
-            margin-top: 20px;
-            padding: 16px;
-            background: linear-gradient(135deg, var(--accent2), var(--accent));
-            color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-family: 'DM Mono', monospace;
-            font-size: 13px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .submit-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            width: 200%;
-            height: 200%;
-            background: rgba(255,255,255,0.1);
-            border-radius: 50%;
-            transition: transform 0.6s ease;
-        }
-
-        .submit-btn:hover::before { transform: translate(-50%, -50%) scale(1); }
-        .submit-btn:hover {
-            box-shadow: 0 8px 30px rgba(0, 102, 255, 0.4);
-            transform: translateY(-1px);
-        }
-        .submit-btn:active { transform: translateY(0); }
-
-        /* Result card */
-        .result-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-            animation: fadeUp 0.5s ease both;
-        }
-
-        .result-header {
-            padding: 20px 30px;
-            background: var(--surface2);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .result-header-label {
-            font-size: 10px;
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-
-        .result-id {
-            font-size: 11px;
-            color: var(--text-muted);
-            font-family: 'DM Mono', monospace;
-        }
-
-        .result-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-        }
-
-        @media (max-width: 600px) {
-            .result-body { grid-template-columns: 1fr; }
-        }
-
-        .result-image-panel {
-            padding: 30px;
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        }
-
-        @media (max-width: 600px) {
-            .result-image-panel { border-right: none; border-bottom: 1px solid var(--border); }
-        }
-
-        .result-image-panel img {
-            width: 100%;
-            max-width: 260px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            display: block;
-        }
-
-        .img-label {
-            font-size: 10px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-
-        .result-info-panel {
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 24px;
-        }
-
-        .diagnosis-block {}
-
-        .diag-label {
-            font-size: 10px;
-            letter-spacing: 2.5px;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        .diag-result {
-            font-family: 'DM Serif Display', serif;
-            font-size: 26px;
-            color: var(--accent);
-            line-height: 1.2;
-            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-        }
-
-        .meta-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 12px;
-        }
-
-        .meta-row:last-child { border-bottom: none; }
-
-        .meta-key {
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        .meta-val {
-            color: var(--text-dim);
-            font-family: 'DM Mono', monospace;
-        }
-
-        .warn-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 107, 53, 0.1);
-            border: 1px solid rgba(255, 107, 53, 0.25);
-            color: var(--warn);
-            font-size: 11px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            letter-spacing: 0.5px;
-            font-family: 'Noto Sans SC', sans-serif;
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            margin-top: 60px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border);
-            font-size: 11px;
-            color: var(--text-muted);
-            letter-spacing: 1px;
-        }
-
-        /* Scan animation on result */
-        @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
-    </style>
+footer{text-align:center;margin-top:50px;padding-top:22px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);letter-spacing:1px}
+</style>
 </head>
 <body>
 <div class="container">
 
-    <header>
-        <div class="logo-group">
-            <div class="logo-icon">🦴</div>
-            <div>
-                <div class="logo-text">OssiScan</div>
-                <div class="logo-sub">Fracture Detection System</div>
-            </div>
-        </div>
-        <div class="status-badge">
-            <span class="status-dot"></span>
-            System Online
-        </div>
-    </header>
-
-    <div class="hero">
-        <div class="hero-tag">EfficientNet-B0 · 10-Class Model</div>
-        <h1>骨折智能<br>检测分析</h1>
-        <p>上传 X 光片，AI 将自动识别骨折类型，支持 10 种骨折分类诊断</p>
+  <header>
+    <div class="logo-group">
+      <div class="logo-icon">🦴</div>
+      <div>
+        <div class="logo-text">OssiScan</div>
+        <div class="logo-sub" data-i18n="logo.sub">Bone Fracture AI Detection</div>
+      </div>
     </div>
-
-    <div class="upload-card">
-        <div class="section-label">影像上传</div>
-        <form method="POST" enctype="multipart/form-data" id="uploadForm">
-            <div class="drop-zone" id="dropZone">
-                <input type="file" name="file" id="fileInput" accept="image/*">
-                <span class="drop-icon">📡</span>
-                <div class="drop-text">点击或拖拽上传 X 光影像</div>
-                <div class="drop-sub">支持 JPG / PNG / WEBP 格式</div>
-            </div>
-            <div class="file-preview" id="filePreview">
-                <div class="file-icon">🖼</div>
-                <div class="file-info">
-                    <div class="file-name" id="fileName">—</div>
-                    <div class="file-size" id="fileSize">—</div>
-                </div>
-                <div class="file-check">✓</div>
-            </div>
-            <button type="submit" class="submit-btn">▶ &nbsp; 开始分析</button>
-        </form>
-    </div>
-
-    {% if result %}
-    <div class="result-card">
-        <div class="result-header">
-            <span class="result-header-label">诊断报告</span>
-            <span class="result-id">REF · {{ range(100000, 999999) | random }}</span>
+    <div class="header-right">
+      <div class="status-badge"><span class="status-dot"></span> <span data-i18n="status.online">System Online</span></div>
+      <div class="dl-wrap">
+        <button class="dl-btn" id="langBtn" data-i18n="nav.language">🌐 Language ▼</button>
+        <div class="dl-menu" id="langMenu">
+          <button data-setlang="zh" data-i18n="lang.zh">中文</button>
+          <button data-setlang="en" data-i18n="lang.en">English</button>
+          <button data-setlang="ko" data-i18n="lang.ko">한국어</button>
         </div>
-        <div class="result-body">
-            {% if img_path %}
-            <div class="result-image-panel">
-                <span class="img-label">原始影像</span>
-                <img src="{{ img_path }}" alt="X-ray">
-            </div>
-            {% endif %}
-            <div class="result-info-panel">
-                <div class="diagnosis-block">
-                    <div class="diag-label">检测结果</div>
-                    <div class="diag-result">{{ result }}</div>
-                </div>
-                <div>
-                    <div class="meta-row">
-                        <span class="meta-key">MODEL</span>
-                        <span class="meta-val">EfficientNet-B0</span>
-                    </div>
-                    <div class="meta-row">
-                        <span class="meta-key">CLASSES</span>
-                        <span class="meta-val">10-category</span>
-                    </div>
-                    <div class="meta-row">
-                        <span class="meta-key">STATUS</span>
-                        <span class="meta-val" style="color: var(--success);">Complete ✓</span>
-                    </div>
-                </div>
-                <div class="warn-badge">
-                    ⚠ 本结果仅供参考，请遵医嘱
-                </div>
-            </div>
+      </div>
+      <div class="dl-wrap">
+        <button class="dl-btn" id="dlBtn" data-i18n="nav.manual">📘 Project Manual ▼</button>
+        <div class="dl-menu" id="dlMenu">
+          <button data-lang="zh" data-i18n="manual.zh">中文版 PDF</button>
+          <button data-lang="en" data-i18n="manual.en">English PDF</button>
+          <button data-lang="ko" data-i18n="manual.ko">한국어 PDF</button>
         </div>
+      </div>
     </div>
-    {% endif %}
+  </header>
 
-    <footer>
-        OssiScan · Bone Fracture Detection · AI-Powered · For Research Use Only
-    </footer>
+  <div class="hero">
+    <div class="hero-tag" data-i18n="hero.tag">EfficientNet-B0 · Grad-CAM · PACS UI</div>
+    <h1><span data-i18n="hero.title1">Bone Fracture</span><br><span data-i18n="hero.title2">AI Analysis Platform</span></h1>
+    <p data-i18n="hero.desc">Upload an X-ray image. AI provides classification, Grad-CAM heatmap and approximate lesion localization.</p>
+  </div>
 
+  <!-- Upload -->
+  <div class="upload-card">
+    <div class="section-label" data-i18n="upload.section">Image Upload</div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept="image/*">
+      <span class="drop-icon">📡</span>
+      <div class="drop-text" data-i18n="upload.dropText">Click or drop X-ray image to upload</div>
+      <div class="drop-sub" data-i18n="upload.dropSub">JPG / PNG / WEBP</div>
+    </div>
+    <div class="file-preview" id="filePreview">
+      <div class="file-icon">🖼</div>
+      <div class="file-info">
+        <div class="file-name" id="fileName">—</div>
+        <div class="file-size" id="fileSize">—</div>
+      </div>
+      <div class="file-check">✓</div>
+    </div>
+    <button class="submit-btn" id="analyzeBtn" disabled data-i18n="upload.start">▶  Start AI Analysis</button>
+  </div>
+
+  <!-- Scan overlay -->
+  <div class="scan-overlay" id="scanOverlay">
+    <div class="scan-box">
+      <div class="scan-grid"></div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scan-text" data-i18n="scan.title">AI Scanning...</div>
+    <div class="scan-status" id="scanStatus" data-i18n="scan.step1">Initializing neural network…</div>
+    <div class="scan-bar"><div class="scan-bar-fill"></div></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-wrap" id="resultWrap">
+    <div class="pacs" id="pacsRoot">
+
+      <div class="viewer">
+        <div class="viewer-head">
+          <div class="viewer-title" data-i18n="viewer.title">DICOM Viewer · Lesion Localization</div>
+          <div class="view-tabs" id="viewTabs">
+            <button class="view-tab active" data-view="original" data-i18n="view.original">Original</button>
+            <button class="view-tab" data-view="localization" data-i18n="view.localization">Localization</button>
+            <button class="view-tab" data-view="heatmap" data-i18n="view.heatmap">Heatmap</button>
+            <button class="view-tab" data-view="overlay" data-i18n="view.overlay">Overlay</button>
+          </div>
+        </div>
+        <div class="canvas-area" id="canvasArea" data-view="original">
+          <img class="layer-orig" id="imgOrig" alt="Original">
+          <img class="layer-heat" id="imgHeat" alt="Heatmap">
+          <img class="layer-overlay" id="imgOverlay" alt="Overlay">
+          <div class="lesion-box" id="lesionBox"><span class="lesion-label" data-i18n="lesion.label">Suspected Lesion Region</span></div>
+        </div>
+        <div class="thumbs">
+          <div class="thumb active" data-view="original"><img id="thumbOrig" alt=""><div class="thumb-cap" data-i18n="thumb.original">Original</div></div>
+          <div class="thumb" data-view="localization"><img id="thumbLoc" alt=""><div class="thumb-cap" data-i18n="thumb.lesion">Lesion Box</div></div>
+          <div class="thumb" data-view="heatmap"><img id="thumbHeat" alt=""><div class="thumb-cap" data-i18n="thumb.heatmap">Heatmap</div></div>
+        </div>
+      </div>
+
+      <div class="report">
+        <div class="report-head">
+          <div class="report-head-label" data-i18n="report.section">Analysis Report</div>
+          <div class="report-id" id="reportId">REF · ——</div>
+        </div>
+
+        <div>
+          <div class="metric-label" style="margin-bottom:8px" data-i18n="report.detection">Detection Result</div>
+          <div class="diag-result" id="diagResult">—</div>
+          <div class="diag-sub" id="diagSub" data-i18n="report.awaiting">Awaiting analysis</div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric-label" data-i18n="report.confidence">Confidence</div>
+            <div class="metric-val" id="mConf">—</div>
+            <div class="conf-bar"><div class="conf-bar-fill" id="confBar"></div></div>
+          </div>
+          <div class="metric">
+            <div class="metric-label" data-i18n="report.risk">Risk Level</div>
+            <div class="metric-val" id="mRisk">—</div>
+          </div>
+        </div>
+
+        <div class="region-info">
+          <div class="label" data-i18n="report.lesionLoc">Lesion Localization</div>
+          <div class="text" id="regionText">—</div>
+          <span class="approx-tag" data-i18n="report.approxTag">Approximate Lesion Localization</span>
+        </div>
+
+        <div>
+          <div class="meta-row"><span class="meta-key" data-i18n="meta.model">MODEL</span><span class="meta-val">EfficientNet-B0</span></div>
+          <div class="meta-row"><span class="meta-key" data-i18n="meta.method">METHOD</span><span class="meta-val">Grad-CAM</span></div>
+          <div class="meta-row"><span class="meta-key" data-i18n="meta.classes">CLASSES</span><span class="meta-val">10-category</span></div>
+          <div class="meta-row"><span class="meta-key" data-i18n="meta.timestamp">TIMESTAMP</span><span class="meta-val" id="mTime">—</span></div>
+        </div>
+
+        <div class="warn-badge" data-i18n="disclaimer">⚠ This result is for assistive analysis only and does not constitute a medical diagnosis. Please consult a professional physician.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer data-i18n="footer">OssiScan · Bone Fracture AI Detection · Grad-CAM Powered · For Research Use Only</footer>
 </div>
 
 <script>
-    const fileInput = document.getElementById('fileInput');
-    const filePreview = document.getElementById('filePreview');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const dropZone = document.getElementById('dropZone');
+const fileInput=document.getElementById('fileInput');
+const filePreview=document.getElementById('filePreview');
+const fileName=document.getElementById('fileName');
+const fileSize=document.getElementById('fileSize');
+const dropZone=document.getElementById('dropZone');
+const analyzeBtn=document.getElementById('analyzeBtn');
+const scanOverlay=document.getElementById('scanOverlay');
+const scanStatus=document.getElementById('scanStatus');
+const resultWrap=document.getElementById('resultWrap');
+const dlBtn=document.getElementById('dlBtn');
+const dlMenu=document.getElementById('dlMenu');
+const langBtn=document.getElementById('langBtn');
+const langMenu=document.getElementById('langMenu');
 
-    fileInput.addEventListener('change', function() {
-        if (this.files[0]) showFile(this.files[0]);
-    });
+/* ---------- i18n ---------- */
+const I18N={zh:null,en:null,ko:null};
+let CURRENT_LANG = (localStorage.getItem('ossi_lang')) || 'en';
+const HTML_LANG_MAP={zh:'zh',en:'en',ko:'ko'};
 
-    ['dragover', 'dragleave', 'drop'].forEach(e => {
-        dropZone.addEventListener(e, function(ev) {
-            ev.preventDefault();
-            if (e === 'dragover') dropZone.classList.add('dragover');
-            else dropZone.classList.remove('dragover');
-            if (e === 'drop' && ev.dataTransfer.files[0]) {
-                showFile(ev.dataTransfer.files[0]);
-            }
-        });
-    });
+async function loadLocale(lang){
+  if(I18N[lang]) return I18N[lang];
+  try{
+    const r=await fetch('/static/i18n/'+lang+'.json',{cache:'no-cache'});
+    I18N[lang]=await r.json();
+  }catch(e){ I18N[lang]={}; }
+  return I18N[lang];
+}
+function t(key,vars){
+  const dict=I18N[CURRENT_LANG]||{};
+  let s = dict[key];
+  if(s==null) s = (I18N.en && I18N.en[key]) || key;
+  if(vars){ for(const k in vars) s = s.split('{'+k+'}').join(vars[k]); }
+  return s;
+}
+function applyI18n(){
+  document.documentElement.lang = HTML_LANG_MAP[CURRENT_LANG]||'en';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    const v=t(k);
+    if(el.tagName==='TITLE') document.title=v; else el.textContent=v;
+  });
+  // Highlight current language PDF in manual menu
+  dlMenu.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('current', b.dataset.lang===CURRENT_LANG);
+  });
+  // Reorder manual menu so current language is first
+  const order=[CURRENT_LANG, ...['zh','en','ko'].filter(x=>x!==CURRENT_LANG)];
+  order.forEach(l=>{
+    const btn=dlMenu.querySelector('button[data-lang="'+l+'"]');
+    if(btn) dlMenu.appendChild(btn);
+  });
+  // Re-render dynamic result text if present
+  if(lastResult) refreshResultI18n();
+}
+function refreshResultI18n(){
+  const d=lastResult;
+  document.getElementById('diagSub').textContent = t('report.fractureDetected')+' · '+d.localization_note;
+  const r=document.getElementById('mRisk'); r.textContent=t('risk.'+d.risk); r.className='metric-val risk-'+d.risk;
+  document.getElementById('regionText').textContent = t('report.lesionText',{region:d.region});
+  const loc=CURRENT_LANG==='zh'?'zh-CN':CURRENT_LANG==='ko'?'ko-KR':'en-US';
+  document.getElementById('mTime').textContent = new Date(d.timestamp*1000).toLocaleString(loc);
+}
+async function setLang(lang){
+  CURRENT_LANG=lang;
+  localStorage.setItem('ossi_lang',lang);
+  await loadLocale(lang);
+  applyI18n();
+}
+langBtn.addEventListener('click',e=>{ e.stopPropagation(); langMenu.classList.toggle('show'); dlMenu.classList.remove('show'); });
+langMenu.querySelectorAll('button').forEach(b=>b.addEventListener('click',ev=>{
+  ev.stopPropagation(); langMenu.classList.remove('show');
+  setLang(b.dataset.setlang);
+}));
 
-    function showFile(file) {
-        fileName.textContent = file.name;
-        fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
-        filePreview.classList.add('show');
+(async()=>{
+  // Always preload english as fallback, plus current
+  await Promise.all([loadLocale('en'), loadLocale(CURRENT_LANG)]);
+  applyI18n();
+})();
+
+
+let currentFile=null;
+let lastResult=null;
+
+fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) setFile(fileInput.files[0]); });
+['dragover','dragleave','drop'].forEach(e=>{
+  dropZone.addEventListener(e,ev=>{
+    ev.preventDefault();
+    if(e==='dragover') dropZone.classList.add('dragover'); else dropZone.classList.remove('dragover');
+    if(e==='drop' && ev.dataTransfer.files[0]) setFile(ev.dataTransfer.files[0]);
+  });
+});
+function setFile(f){
+  currentFile=f;
+  fileName.textContent=f.name;
+  fileSize.textContent=(f.size/1024).toFixed(1)+' KB';
+  filePreview.classList.add('show');
+  analyzeBtn.disabled=false;
+}
+
+analyzeBtn.addEventListener('click',analyze);
+
+async function analyze(){
+  if(!currentFile) return;
+  scanOverlay.classList.add('show');
+  const steps=[t('scan.step1'),t('scan.step2'),t('scan.step3'),t('scan.step4'),t('scan.step5')];
+  let i=0; scanStatus.textContent=steps[0];
+  const iv=setInterval(()=>{ i=(i+1)%steps.length; scanStatus.textContent=steps[i]; },520);
+
+  try{
+    const fd=new FormData(); fd.append('file',currentFile);
+    const res=await fetch('/api/analyze',{method:'POST',body:fd});
+    const data=await res.json();
+    clearInterval(iv);
+    await new Promise(r=>setTimeout(r,400));
+    scanOverlay.classList.remove('show');
+    renderResult(data);
+  }catch(err){
+    clearInterval(iv); scanOverlay.classList.remove('show');
+    alert('Analysis failed: '+err.message);
+  }
+}
+
+function renderResult(d){
+  lastResult=d;
+  document.getElementById('imgOrig').src=d.images.original;
+  document.getElementById('imgHeat').src=d.images.heatmap;
+  document.getElementById('imgOverlay').src=d.images.overlay;
+  document.getElementById('thumbOrig').src=d.images.original;
+  document.getElementById('thumbLoc').src=d.images.original;
+  document.getElementById('thumbHeat').src=d.images.heatmap;
+
+  document.getElementById('diagResult').textContent=d.label;
+  document.getElementById('diagSub').textContent=t('report.fractureDetected')+' · '+d.localization_note;
+  document.getElementById('mConf').textContent=d.confidence.toFixed(1)+'%';
+  document.getElementById('confBar').style.width=d.confidence+'%';
+  const r=document.getElementById('mRisk'); r.textContent=t('risk.'+d.risk); r.className='metric-val risk-'+d.risk;
+  document.getElementById('regionText').textContent=t('report.lesionText',{region:d.region});
+  const _loc=CURRENT_LANG==='zh'?'zh-CN':CURRENT_LANG==='ko'?'ko-KR':'en-US';
+  document.getElementById('mTime').textContent=new Date(d.timestamp*1000).toLocaleString(_loc);
+  document.getElementById('reportId').textContent='REF · '+Math.floor(100000+Math.random()*899999);
+
+  const box=document.getElementById('lesionBox');
+  box.style.left=(d.bbox.x*100)+'%';
+  box.style.top=(d.bbox.y*100)+'%';
+  box.style.width=(d.bbox.w*100)+'%';
+  box.style.height=(d.bbox.h*100)+'%';
+
+  setView('localization');
+  resultWrap.classList.add('show');
+  
+  resultWrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function setView(v){
+  const area=document.getElementById('canvasArea');
+  area.dataset.view=v;
+  document.getElementById('lesionBox').classList.toggle('show', v==='localization' || v==='overlay');
+  document.querySelectorAll('.view-tab').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  document.querySelectorAll('.thumb').forEach(t=>t.classList.toggle('active',t.dataset.view===v));
+}
+document.querySelectorAll('.view-tab').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+document.querySelectorAll('.thumb').forEach(t=>t.addEventListener('click',()=>setView(t.dataset.view)));
+
+/* ---------- Project Manual PDF (fixed content, no detection data) ---------- */
+dlBtn.addEventListener('click',e=>{ e.stopPropagation(); dlMenu.classList.toggle('show'); });
+document.addEventListener('click',()=>{ dlMenu.classList.remove('show'); langMenu.classList.remove('show'); });
+dlMenu.querySelectorAll('button').forEach(b=>b.addEventListener('click',ev=>{
+  ev.stopPropagation();
+  dlMenu.classList.remove('show');
+  exportManual(b.dataset.lang);
+}));
+
+const MANUAL={
+  zh:{
+    file:'AI骨折检测系统项目说明书.pdf',
+    title:'AI 骨折检测系统项目说明书',
+    subtitle:'Bone Fracture AI Analysis Platform',
+    projectLabel:'项目名称', dateLabel:'生成日期',
+    projectName:'AI 骨折检测系统 (Bone Fracture AI Analysis Platform)',
+    tocTitle:'目录',
+    toc:['项目概述','系统设计','主要功能','技术架构','预期效果','应用价值','项目总结'],
+    page:'第 {n} 页',
+    screenshotCap:['首页界面','分析页面','热力图展示'],
+    chapters:[
+      {h:'第一章  项目概述',body:[
+        '骨折是临床中最常见的骨骼损伤之一，传统 X 光影像阅片严重依赖放射科医师的经验，工作量大、效率低、易受主观因素影响。',
+        '本项目以人工智能为核心，结合医学影像分析、深度学习与可视化技术，构建一套面向骨折辅助识别的智能分析平台。',
+        '研发目的：为放射科与急诊场景提供高效、稳定、可解释的 AI 辅助分析工具，缩短读片时间，提高诊断一致性，降低漏诊与误诊风险。',
+        '解决问题：在影像数据量持续增长、专业医师资源相对紧缺的现实背景下，提升骨折影像的初筛效率，并以可视化方式呈现 AI 关注的病变区域。'
+      ]},
+      {h:'第二章  系统设计',body:[
+        '本系统遵循“医学 AI 平台”的设计理念，整体界面参考 PACS 与放射工作站 (Radiology Workstation) 风格，主色调采用深色科技蓝，强调专业感、稳定感与高级感。',
+        'PACS 风格布局：左侧为 DICOM 影像浏览器，包含 Original / Localization / Heatmap / Overlay 四种视图切换；右侧为结构化分析面板，展示模型信息、置信度与风险等级。',
+        '医学影像工作站界面：使用网格背景、扫描线动画与暗色主题，营造放射工作站的临场感，确保医师与研究人员能够获得连贯的视觉体验。',
+        '可视化分析设计：通过 Grad-CAM 生成热力图并叠加在原始影像上，配合近似病变框 (Approximate Lesion Localization)，使模型决策过程具备可解释性。'
+      ], insertScreenshots:true},
+      {h:'第三章  主要功能',body:[
+        '· X 光影像上传：支持 JPG / PNG / WEBP 格式，提供拖拽与点击两种上传方式。',
+        '· AI 骨折识别：基于 EfficientNet-B0 的 10 类骨折分类模型，输出诊断标签与置信度。',
+        '· Grad-CAM 热力图：实时生成模型关注区域的热力图，并提供与原图的叠加视图。',
+        '· 病变区域可视化：根据 Grad-CAM 高激活区域计算近似病变框，并在影像上高亮显示。',
+        '· 风险评估：根据置信度自动划分 Low / Medium / High 三级风险等级。',
+        '· 多语言项目文档导出：支持中文 / English / 한국어 三种语言的项目说明书 PDF 导出。'
+      ]},
+      {h:'第四章  技术架构',body:[
+        '前端：HTML5 + CSS3 + 原生 JavaScript，结合 jsPDF 与 html2canvas 实现客户端 PDF 生成。',
+        '后端：Python Flask 框架，提供 /api/analyze 推理接口与静态资源服务。',
+        'AI 模块：PyTorch 深度学习框架，EfficientNet-B0 分类模型，结合 Grad-CAM 可解释性算法。',
+        '部署：Procfile 兼容主流云平台 (Heroku / Render 等)，可快速发布上线。'
+      ]},
+      {h:'第五章  预期效果',body:[
+        '· 提高影像分析效率：AI 在数秒内完成初筛，减轻医师重复性工作量。',
+        '· 提供辅助分析能力：为医师提供第二意见，降低主观判断带来的误差。',
+        '· 优化诊断流程：可与 PACS / HIS 等系统对接，嵌入现有放射科工作流。',
+        '· 增强可视化展示效果：通过热力图与病变框，使 AI 决策过程对人类可见、可理解。'
+      ]},
+      {h:'第六章  应用价值',body:[
+        '· 医院：辅助放射科医师进行骨折初筛，提高诊断效率。',
+        '· 康复中心：用于康复评估中的影像跟踪与对比分析。',
+        '· 医学教育：作为医学生学习骨折影像的辅助教学工具。',
+        '· 医学研究：为骨科与放射学研究提供可解释 AI 分析平台。',
+        '· AI 医学实验平台：可作为多模态医学 AI 研究的基础平台进行扩展。'
+      ]},
+      {h:'第七章  项目总结',body:[
+        '本项目以 EfficientNet-B0 为核心，结合 Grad-CAM 可解释性算法与 PACS 风格的现代医学 AI 界面，构建了一套完整的骨折智能分析平台。',
+        '项目特点：模型轻量、推理高效、可视化清晰、界面专业、文档多语言。',
+        '创新点：将分类模型的 Grad-CAM 结果转换为近似病变框，使分类模型也具备“近似定位”能力；同时提供中英韩三语言项目说明文档。',
+        '未来扩展：引入真实目标检测模型 (YOLO / Faster R-CNN) 提升定位精度；接入 DICOM 标准影像；扩展至 CT / MRI 等更多模态；并提供医院级权限管理与数据安全机制。'
+      ]}
+    ]
+  },
+  en:{
+    file:'Bone Fracture AI Platform Project Manual.pdf',
+    title:'Bone Fracture AI Platform — Project Manual',
+    subtitle:'AI Bone Fracture Detection & Analysis System',
+    projectLabel:'Project', dateLabel:'Generated',
+    projectName:'Bone Fracture AI Analysis Platform',
+    tocTitle:'Table of Contents',
+    toc:['Project Overview','System Design','Key Features','Technical Architecture','Expected Outcomes','Application Value','Project Summary'],
+    page:'Page {n}',
+    screenshotCap:['Home Interface','Analysis Page','Heatmap View'],
+    chapters:[
+      {h:'Chapter 1  Project Overview',body:[
+        'Bone fractures are among the most common skeletal injuries in clinical practice. Conventional X-ray reading depends heavily on radiologist experience, suffers from heavy workload, and is influenced by subjective factors.',
+        'This project builds an intelligent platform for bone fracture detection by combining artificial intelligence, medical image analysis, deep learning, and visualization.',
+        'Objective: deliver an efficient, stable and interpretable AI assistive tool for radiology and emergency settings, reducing reading time, improving diagnostic consistency, and lowering missed-diagnosis risk.',
+        'Problem addressed: with rapidly growing imaging volumes and limited expert resources, the platform accelerates fracture screening and visually reveals AI-attended lesion regions.'
+      ]},
+      {h:'Chapter 2  System Design',body:[
+        'The system follows a modern "Medical AI Platform" philosophy. The interface is inspired by PACS and Radiology Workstation styling — a dark technical theme that emphasizes professionalism, stability and a premium feel.',
+        'PACS-style layout: a DICOM viewer on the left with Original / Localization / Heatmap / Overlay views, paired with a structured analysis panel on the right that presents model metadata, confidence and risk level.',
+        'Radiology workstation interface: a grid background, animated scan line and dark palette recreate the workstation experience and provide a consistent visual context for clinicians and researchers.',
+        'Visualization design: Grad-CAM heatmaps are generated on the fly and overlaid on the original image, together with an Approximate Lesion Localization box, making the model decision interpretable.'
+      ], insertScreenshots:true},
+      {h:'Chapter 3  Key Features',body:[
+        '· X-ray image upload — JPG / PNG / WEBP via drag-and-drop or click.',
+        '· AI fracture detection — EfficientNet-B0 10-class classifier with diagnosis label and confidence.',
+        '· Grad-CAM heatmap — real-time activation map with overlay view.',
+        '· Lesion region visualization — approximate bounding box derived from high-activation Grad-CAM areas.',
+        '· Risk assessment — automatic Low / Medium / High level from confidence.',
+        '· Multilingual project documentation — Chinese / English / Korean Project Manual PDF.'
+      ]},
+      {h:'Chapter 4  Technical Architecture',body:[
+        'Frontend: HTML5 + CSS3 + vanilla JavaScript, with jsPDF and html2canvas for client-side PDF generation.',
+        'Backend: Python Flask serving the /api/analyze inference endpoint and static resources.',
+        'AI module: PyTorch deep learning framework with EfficientNet-B0 and Grad-CAM interpretability.',
+        'Deployment: Procfile compatible with major cloud platforms (Heroku / Render etc.) for rapid deployment.'
+      ]},
+      {h:'Chapter 5  Expected Outcomes',body:[
+        '· Improved imaging analysis efficiency — AI screening in seconds, reducing repetitive workload.',
+        '· Assistive analysis capability — second-opinion support to mitigate subjective bias.',
+        '· Optimized diagnostic workflow — integrable with PACS / HIS systems for embedded radiology workflows.',
+        '· Enhanced visualization — heatmaps and lesion boxes make AI decisions visible and explainable.'
+      ]},
+      {h:'Chapter 6  Application Value',body:[
+        '· Hospitals — assist radiologists with first-pass fracture screening.',
+        '· Rehabilitation centers — image tracking and comparison for recovery assessment.',
+        '· Medical education — auxiliary teaching tool for fracture radiology.',
+        '· Medical research — interpretable AI platform for orthopedic and radiology studies.',
+        '· AI medical experimental platform — extensible foundation for multi-modal medical AI research.'
+      ]},
+      {h:'Chapter 7  Project Summary',body:[
+        'Built around EfficientNet-B0, Grad-CAM interpretability and a PACS-style modern medical UI, the platform delivers an end-to-end intelligent fracture analysis solution.',
+        'Highlights: lightweight model, fast inference, clear visualization, professional interface and multilingual documentation.',
+        'Innovation: converting classification-model Grad-CAM into an approximate lesion box gives a classifier "soft localization" capability, and the platform ships with native ZH / EN / KO project documentation.',
+        'Future work: integrate true object-detection models (YOLO / Faster R-CNN) for precise localization, support DICOM-standard imaging, extend to CT / MRI modalities, and add hospital-grade access control and data-security mechanisms.'
+      ]}
+    ]
+  },
+  ko:{
+    file:'AI 골절 분석 시스템 프로젝트 소개서.pdf',
+    title:'AI 골절 분석 시스템 프로젝트 소개서',
+    subtitle:'Bone Fracture AI Analysis Platform',
+    projectLabel:'프로젝트', dateLabel:'생성일',
+    projectName:'AI 골절 분석 시스템 (Bone Fracture AI Analysis Platform)',
+    tocTitle:'목차',
+    toc:['프로젝트 개요','시스템 설계','주요 기능','기술 아키텍처','기대 효과','활용 가치','프로젝트 요약'],
+    page:'{n} 페이지',
+    screenshotCap:['홈 화면','분석 페이지','히트맵 화면'],
+    chapters:[
+      {h:'제1장  프로젝트 개요',body:[
+        '골절은 임상에서 가장 흔한 골격 손상 중 하나이며, 기존 X-ray 판독은 영상의학과 전문의의 경험에 크게 의존하고 업무량이 많아 주관적 요인의 영향을 받기 쉽습니다.',
+        '본 프로젝트는 인공지능을 핵심으로 의료 영상 분석, 딥러닝, 시각화 기술을 결합하여 골절 보조 진단을 위한 지능형 분석 플랫폼을 구축합니다.',
+        '개발 목적: 영상의학과와 응급 환경에 효율적이고 안정적이며 설명 가능한 AI 보조 도구를 제공하여 판독 시간을 단축하고 진단 일관성을 향상시키며 오진·누락 위험을 줄입니다.',
+        '해결 과제: 영상 데이터가 급증하고 전문 인력이 부족한 상황에서 골절 영상의 1차 선별 효율을 높이고 AI가 주목한 병변 영역을 시각적으로 제시합니다.'
+      ]},
+      {h:'제2장  시스템 설계',body:[
+        '본 시스템은 "의료 AI 플랫폼" 설계 철학을 따르며, 인터페이스는 PACS 및 Radiology Workstation 스타일을 참고하여 다크 테크 블루 컬러로 전문성과 안정감, 고급감을 강조합니다.',
+        'PACS 스타일 레이아웃: 좌측에는 Original / Localization / Heatmap / Overlay 4가지 뷰를 지원하는 DICOM 뷰어, 우측에는 모델 정보, 신뢰도, 위험 등급을 보여주는 구조화된 분석 패널을 배치합니다.',
+        '의료 영상 워크스테이션 인터페이스: 그리드 배경, 스캔 라인 애니메이션, 다크 테마로 워크스테이션의 현장감을 재현하여 임상의와 연구자에게 일관된 시각 경험을 제공합니다.',
+        '시각화 분석 설계: Grad-CAM 히트맵을 원본 영상에 오버레이하고 근사 병변 박스 (Approximate Lesion Localization) 와 함께 제시하여 모델의 판단 과정을 해석 가능하게 합니다.'
+      ], insertScreenshots:true},
+      {h:'제3장  주요 기능',body:[
+        '· X-ray 영상 업로드 — JPG / PNG / WEBP 형식, 드래그·드롭 및 클릭 업로드 지원.',
+        '· AI 골절 인식 — EfficientNet-B0 기반 10종 분류 모델, 진단 라벨 및 신뢰도 출력.',
+        '· Grad-CAM 히트맵 — 모델 관심 영역을 실시간 히트맵으로 생성하고 원본과 오버레이.',
+        '· 병변 영역 시각화 — Grad-CAM 고활성 영역으로부터 근사 병변 박스를 산출하고 강조 표시.',
+        '· 위험 평가 — 신뢰도에 기반한 Low / Medium / High 자동 분류.',
+        '· 다국어 프로젝트 문서 내보내기 — 한국어 / 中文 / English 프로젝트 소개서 PDF.'
+      ]},
+      {h:'제4장  기술 아키텍처',body:[
+        '프론트엔드: HTML5 + CSS3 + 순수 JavaScript, jsPDF와 html2canvas를 사용한 클라이언트 PDF 생성.',
+        '백엔드: Python Flask 프레임워크, /api/analyze 추론 엔드포인트 및 정적 리소스 제공.',
+        'AI 모듈: PyTorch 딥러닝 프레임워크, EfficientNet-B0 분류 모델, Grad-CAM 해석성 기법.',
+        '배포: Procfile 호환으로 주요 클라우드 플랫폼(Heroku / Render 등)에 빠르게 배포 가능.'
+      ]},
+      {h:'제5장  기대 효과',body:[
+        '· 영상 분석 효율 향상 — 수 초 내 AI 1차 선별로 반복 업무 감소.',
+        '· 보조 분석 능력 제공 — 임상의에게 2차 의견을 제공하여 주관적 오차 완화.',
+        '· 진단 워크플로 최적화 — PACS / HIS 등과 연동하여 기존 워크플로에 임베드 가능.',
+        '· 시각화 효과 강화 — 히트맵과 병변 박스로 AI 판단을 가시화하고 해석 가능하게 함.'
+      ]},
+      {h:'제6장  활용 가치',body:[
+        '· 병원 — 영상의학과 의료진의 골절 1차 선별 지원.',
+        '· 재활 센터 — 회복 평가용 영상 추적 및 비교 분석.',
+        '· 의학 교육 — 골절 영상 학습용 보조 교구.',
+        '· 의학 연구 — 정형외과·영상의학 연구를 위한 설명 가능한 AI 플랫폼.',
+        '· AI 의료 실험 플랫폼 — 멀티모달 의료 AI 연구의 확장 가능한 기반.'
+      ]},
+      {h:'제7장  프로젝트 요약',body:[
+        'EfficientNet-B0를 중심으로 Grad-CAM 해석성 기법과 PACS 스타일의 현대적 의료 AI UI를 결합하여 골절 지능형 분석 플랫폼을 구현하였습니다.',
+        '특징: 경량 모델, 빠른 추론, 명확한 시각화, 전문적인 인터페이스, 다국어 문서.',
+        '혁신점: 분류 모델의 Grad-CAM 결과를 근사 병변 박스로 변환하여 분류 모델에 "근사 위치 추정" 능력을 부여하고, 한·중·영 3개 언어 문서를 기본 제공.',
+        '향후 확장: 실제 객체 검출 모델(YOLO / Faster R-CNN) 도입으로 정밀 위치 추정, DICOM 표준 영상 지원, CT / MRI 등 모달리티 확장, 병원급 권한 관리 및 데이터 보안 메커니즘 추가.'
+      ]}
+    ]
+  }
+};
+
+async function captureScreenshots(){
+  // Capture 3 representative views of the current page for Chapter 2.
+  // Hide download menu first.
+  dlMenu.classList.remove('show');
+  const targets=[
+    {el:document.querySelector('.upload-card'), cap:0},
+    {el:document.querySelector('.hero'), cap:1},
+    {el:document.querySelector('.result-wrap.show') || document.querySelector('header'), cap:2}
+  ];
+  const shots=[];
+  for(const t of targets){
+    if(!t.el) continue;
+    try{
+      const c=await html2canvas(t.el,{scale:1.2,backgroundColor:'#070b14',useCORS:true,logging:false});
+      shots.push(c.toDataURL('image/jpeg',0.85));
+    }catch(e){ /* ignore */ }
+  }
+  return shots;
+}
+
+async function exportManual(lang){
+  const t=MANUAL[lang];
+  const fontStack = lang==='zh' ? "'Noto Sans SC',sans-serif"
+                  : lang==='ko' ? "'Noto Sans KR',sans-serif"
+                  : "'Noto Sans',sans-serif";
+
+  // Capture page screenshots upfront
+  const shots=await captureScreenshots();
+  const now=new Date().toLocaleDateString(lang==='zh'?'zh-CN':lang==='ko'?'ko-KR':'en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  // Build full hidden doc
+  const doc=document.createElement('div');
+  doc.style.cssText=`position:fixed;left:-99999px;top:0;width:794px;background:#fff;color:#0e1726;font-family:${fontStack};`;
+
+  // helper to make a "page" sized to A4 (794 x 1123 at 96dpi)
+  const mkPage=(inner,opts={})=>`<div class="manual-page" style="width:794px;min-height:1123px;padding:64px 68px;box-sizing:border-box;position:relative;${opts.bg||''}">${inner}</div>`;
+
+  // Cover
+  const cover = mkPage(`
+    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:995px">
+      <div style="width:88px;height:88px;border-radius:22px;background:linear-gradient(135deg,#0066ff,#00d4ff);display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;box-shadow:0 18px 60px rgba(0,102,255,.35);margin-bottom:36px">🦴</div>
+      <div style="font-size:11px;letter-spacing:6px;color:#0066ff;text-transform:uppercase;margin-bottom:18px">OssiScan · Medical AI Platform</div>
+      <div style="font-size:34px;font-weight:800;color:#0a1530;line-height:1.25;margin-bottom:14px;max-width:600px">${t.title}</div>
+      <div style="font-size:15px;color:#5a6a82;letter-spacing:1px;margin-bottom:48px">${t.subtitle}</div>
+      <div style="width:120px;height:2px;background:linear-gradient(90deg,transparent,#0066ff,transparent);margin-bottom:32px"></div>
+      <div style="font-size:13px;color:#0a1530;margin-bottom:6px"><b>${t.projectLabel}:</b> ${t.projectName}</div>
+      <div style="font-size:13px;color:#5a6a82"><b>${t.dateLabel}:</b> ${now}</div>
+    </div>
+  `,{bg:'background:linear-gradient(180deg,#f4f8ff 0%,#ffffff 60%);'});
+
+  // TOC
+  const tocItems = t.toc.map((title,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0;border-bottom:1px dashed #d6dde8;font-size:14px">
+      <span><span style="color:#0066ff;font-weight:700;margin-right:14px">${String(i+1).padStart(2,'0')}</span>${title}</span>
+      <span style="color:#5a6a82;font-size:12px">${i+3}</span>
+    </div>`).join('');
+  const toc = mkPage(`
+    <div style="font-size:11px;letter-spacing:4px;color:#0066ff;text-transform:uppercase;margin-bottom:10px">${t.subtitle}</div>
+    <div style="font-size:26px;font-weight:800;color:#0a1530;margin-bottom:28px;border-bottom:3px solid #0066ff;padding-bottom:14px">${t.tocTitle}</div>
+    ${tocItems}
+  `);
+
+  // Chapters
+  const chapterPages = t.chapters.map((ch,idx)=>{
+    let inner = `
+      <div style="font-size:11px;letter-spacing:4px;color:#0066ff;text-transform:uppercase;margin-bottom:8px">${t.projectName}</div>
+      <div style="font-size:22px;font-weight:800;color:#0a1530;margin-bottom:22px;border-bottom:2px solid #0066ff;padding-bottom:12px">${ch.h}</div>
+      ${ch.body.map(p=>`<p style="font-size:13.5px;line-height:1.85;color:#1a2740;margin:0 0 14px">${p}</p>`).join('')}
+    `;
+    if(ch.insertScreenshots && shots.length){
+      inner += `<div style="margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px">` +
+        shots.map((s,i)=>`<div style="border:1px solid #d6dde8;border-radius:8px;overflow:hidden;background:#070b14"><img src="${s}" style="width:100%;display:block"><div style="text-align:center;font-size:11px;color:#5a6a82;padding:6px;background:#fff">${t.screenshotCap[i]||''}</div></div>`).join('') +
+        `</div>`;
     }
+    return mkPage(inner);
+  }).join('');
+
+  doc.innerHTML = cover + toc + chapterPages;
+  document.body.appendChild(doc);
+  await document.fonts.ready;
+  await new Promise(r=>setTimeout(r,250));
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({unit:'pt',format:'a4'});
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const pages = doc.querySelectorAll('.manual-page');
+
+  for(let i=0;i<pages.length;i++){
+    const canvas = await html2canvas(pages[i],{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false});
+    const imgData = canvas.toDataURL('image/jpeg',0.92);
+    const imgW = pageW;
+    const imgH = canvas.height*(imgW/canvas.width);
+    if(i>0) pdf.addPage();
+    // fit page (single A4 page per manual page; scale down if taller)
+    if(imgH <= pageH){
+      pdf.addImage(imgData,'JPEG',0,0,imgW,imgH);
+    }else{
+      const scale = pageH/imgH;
+      pdf.addImage(imgData,'JPEG',(pageW-imgW*scale)/2,0,imgW*scale,pageH);
+    }
+    // page number footer (skip cover)
+    if(i>0){
+      pdf.setFontSize(9);
+      pdf.setTextColor(120,130,150);
+      const label = t.page.replace('{n}', i);
+      pdf.text(label, pageW/2, pageH-18, {align:'center'});
+    }
+  }
+
+  document.body.removeChild(doc);
+  pdf.save(t.file);
+}
 </script>
 </body>
 </html>

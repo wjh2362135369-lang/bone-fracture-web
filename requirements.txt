@@ -3,3 +3,5 @@ torch
 torchvision
 timm
 pillow
+numpy
+gunicorn
