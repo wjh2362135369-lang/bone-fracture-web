@@ -405,6 +405,10 @@ async function analyze(){
   try{
     const fd=new FormData(); fd.append('file',currentFile);
     const res=await fetch('/api/analyze',{method:'POST',body:fd});
+    if(!res.ok){
+      const txt=await res.text();
+      throw new Error('Server '+res.status+': '+txt.slice(0,300));
+    }
     const data=await res.json();
     clearInterval(iv);
     await new Promise(r=>setTimeout(r,400));

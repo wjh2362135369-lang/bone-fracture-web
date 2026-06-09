@@ -10,7 +10,11 @@ import io
 import base64
 import time
 import uuid
+import gc
 import numpy as np
+
+# Limit CPU threads — fewer threads = lower peak memory on small instances
+torch.set_num_threads(1)
 
 app = Flask(__name__)
 
@@ -158,50 +162,65 @@ def api_analyze():
     if not file:
         return jsonify({"error": "no file"}), 400
 
-    fname = f"{uuid.uuid4().hex}_{file.filename}"
-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-    file.save(save_path)
+    try:
+        fname = f"{uuid.uuid4().hex}_{file.filename}"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+        file.save(save_path)
 
-    pil = Image.open(save_path).convert("RGB").resize((224, 224))
-    x = transform(pil).unsqueeze(0)
-    x.requires_grad_(True)
+        pil = Image.open(save_path).convert("RGB").resize((224, 224))
+        x = transform(pil).unsqueeze(0)
+        x.requires_grad_(True)
 
-    # Forward (no grad) for probs
-    with torch.no_grad():
-        logits = model(x)
-        probs = F.softmax(logits, dim=1)[0].cpu().numpy()
-    pred = int(np.argmax(probs))
-    conf = float(probs[pred])
+        # Forward (no grad) for probs
+        with torch.no_grad():
+            logits = model(x)
+            probs = F.softmax(logits, dim=1)[0].cpu().numpy()
+        pred = int(np.argmax(probs))
+        conf = float(probs[pred])
 
-    # Grad-CAM (needs grad)
-    cam, _ = gradcam(x, pred)
-    bbox = approx_bbox_from_cam(cam)
+        # Grad-CAM (needs grad)
+        cam, _ = gradcam(x, pred)
+        bbox = approx_bbox_from_cam(cam)
 
-    # Build images
-    orig_arr = np.asarray(pil, dtype=np.uint8)
-    heat_rgb = colorize_jet(cam)
-    overlay = (0.55 * orig_arr + 0.45 * heat_rgb).clip(0, 255).astype(np.uint8)
+        # Build images
+        orig_arr = np.asarray(pil, dtype=np.uint8)
+        heat_rgb = colorize_jet(cam)
+        overlay = (0.55 * orig_arr + 0.45 * heat_rgb).clip(0, 255).astype(np.uint8)
 
-    orig_b64 = encode_png(Image.fromarray(orig_arr))
-    heat_b64 = encode_png(Image.fromarray(heat_rgb))
-    overlay_b64 = encode_png(Image.fromarray(overlay))
+        orig_b64 = encode_png(Image.fromarray(orig_arr))
+        heat_b64 = encode_png(Image.fromarray(heat_rgb))
+        overlay_b64 = encode_png(Image.fromarray(overlay))
 
-    return jsonify({
-        "label": class_names[pred],
-        "confidence": round(conf * 100, 2),
-        "risk": risk_level(conf),
-        "region": region_text(bbox),
-        "bbox": bbox,                  # normalized 0..1
-        "timestamp": int(time.time()),
-        "model": "EfficientNet-B0 (Classification + Grad-CAM)",
-        "localization_note": "Approximate Lesion Localization (Grad-CAM derived)",
-        "images": {
-            "original": orig_b64,
-            "heatmap": heat_b64,
-            "overlay": overlay_b64
-        },
-        "probs": [{"label": class_names[i], "p": round(float(p) * 100, 2)} for i, p in enumerate(probs)]
-    })
+        response = jsonify({
+            "label": class_names[pred],
+            "confidence": round(conf * 100, 2),
+            "risk": risk_level(conf),
+            "region": region_text(bbox),
+            "bbox": bbox,                  # normalized 0..1
+            "timestamp": int(time.time()),
+            "model": "EfficientNet-B0 (Classification + Grad-CAM)",
+            "localization_note": "Approximate Lesion Localization (Grad-CAM derived)",
+            "images": {
+                "original": orig_b64,
+                "heatmap": heat_b64,
+                "overlay": overlay_b64
+            },
+            "probs": [{"label": class_names[i], "p": round(float(p) * 100, 2)} for i, p in enumerate(probs)]
+        })
+
+        # Free heavy tensors / graph before returning
+        del x, logits, cam
+        model.zero_grad(set_to_none=True)
+        gc.collect()
+
+        return response
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()          # shows up in Render logs
+        model.zero_grad(set_to_none=True)
+        gc.collect()
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
